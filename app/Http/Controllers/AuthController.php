@@ -1,48 +1,130 @@
 <?php
-/**
- * User: prakash
- * Date: 12/16/15
- * Time: 10:07 AM
- */
 
 namespace App\Http\Controllers;
+
 use Illuminate\Http\Request;
 use Auth;
+use App\User;
+use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller {
 
-    public function index()
+
+    protected $templateSuccessLogin = 'auth.successLogin';
+
+    protected $templateSuccessCreateUser = 'auth.successCreateUser';
+
+
+    /**
+     * AuthController constructor.
+     */
+    public function __construct()
+    {
+        $this->middleware('guest', ['except' => ['getLogout', 'getRegister', 'postRegister']]);
+    }
+
+    /**
+     * @return \Illuminate\View\View
+     */
+    public function login()
     {
        return view('auth.login');
     }
 
+    /**
+     * Handle a login request to the application.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
     public function postLogin(Request $request)
     {
-        try {
-            //Retrieving users data
-            $email = $request->get('email');
-            $password = $request->get('password');
+        $this->validate($request, $this->rulesLoginUser());
 
-            if (Auth::attempt(['email' => $email, 'password' => $password, 'status' => 1])) {
-                return redirect('dashboard');
-            }
+        $credentials = $request->only('email', 'password');
 
-            return redirect()->back()
-                ->withInput($request->only('email', 'remember'))
-                ->withErrors([
-                    'email' => 'The email or password you’ve entered doesn’t match any account.',
-                ]);
+        if (Auth::attempt($credentials, $request->has('remember'))) {
+            return view($this->templateSuccessLogin);
         }
-        catch(\Exception $e)
-        {
-            return $e->getMessage();
-        }
+
+        return redirect()->back()
+            ->withInput($request->only('email', 'remember'))
+            ->withErrors([
+                'email' => $this->getFailedLoginMessage(),
+            ]);
     }
 
+    /**
+     * Get the failed login message.
+     *
+     * @return string
+     */
+    protected function getFailedLoginMessage()
+    {
+        return 'These credentials do not match our records.';
+    }
+
+    /**
+     * @return \Illuminate\Http\RedirectResponse|\Laravel\Lumen\Http\Redirector
+     */
     public function getLogout()
     {
-            Auth::logout();
-            return redirect('/');
+        Auth::logout();
+        return redirect('/');
+    }
+
+    /**
+     * Show the application registration form.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function getRegister()
+    {
+        return view('auth.register');
+    }
+
+    /**
+     * Handle a registration request for the application.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function postRegister(Request $request)
+    {
+        $validator = Validator::make($request->all(), $this->rulesCreateUser());
+
+        if ($validator->fails()) {
+            $this->throwValidationException(
+                $request, $validator
+            );
+        }
+
+        Auth::login(User::createNewUser($request->all()));
+
+        return view($this->templateSuccessCreateUser);
+    }
+
+    /**
+     * @return array
+     */
+    protected function rulesLoginUser()
+    {
+        return [
+            'email'    => 'required|email',
+            'password' => 'required',
+        ];
+    }
+
+    /**
+     * @return array
+     */
+    protected function rulesCreateUser()
+    {
+        return [
+            'name'     => 'required|max:255',
+            'email'    => 'required|email|max:255|unique:users',
+            'password' => 'required|confirmed|min:6',
+        ];
     }
 
 }

@@ -11,18 +11,15 @@
 |
 */
 
-use Illuminate\Support\Facades\Hash;
-
-$app->get('/','AuthController@index');
-$app->post('login','AuthController@postLogin');
-$app->get('logOut','AuthController@getLogout');
+$app->get('/', ['middleware' => 'auth', 'uses' => 'HomeController@index']);
 
 
-$app->get('dashboard','DashboardController@index');
+$app->get('/auth/login', 'AuthController@login');
 
+$app->post('/auth/login', 'AuthController@postLogin');
 
+$app->get('/auth/register', 'AuthController@getRegister');
 
-$app->get('test', function () use ($app) {
-    //return env('APP_KEY');
-    return Hash::make('prakash');
-});
+$app->post('/auth/register', 'AuthController@postRegister');
+
+$app->get('/auth/logout', 'AuthController@getLogout');

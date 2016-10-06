@@ -1,12 +1,13 @@
-<?php
-
-namespace App\Http\Middleware;
+<?php namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Contracts\Auth\Guard;
+use Illuminate\Http\RedirectResponse;
 
-class Authenticate
-{
+class RedirectIfAuthenticated {
+
+    protected $redirectUrl = '/';
+
     /**
      * The Guard implementation.
      *
@@ -14,12 +15,11 @@ class Authenticate
      */
     protected $auth;
 
-    protected $authLoginUrl = '/auth/login';
-
     /**
      * Create a new filter instance.
      *
      * @param  Guard  $auth
+     * @return void
      */
     public function __construct(Guard $auth)
     {
@@ -35,17 +35,12 @@ class Authenticate
      */
     public function handle($request, Closure $next)
     {
-        if ($this->auth->guest()) {
-            if ($request->ajax()) {
-                return response('Unauthorized.', 401);
-            } else {
-                // Lumen has no Redirector::guest(), this line is put the intended URL to a session like Redirector::guest() does
-                app('session')->put('url.intended', app('url')->full());
-                // Set your login URL here
-                return redirect()->to($this->authLoginUrl, 302);
-            }
+        if ($this->auth->check())
+        {
+            return new RedirectResponse(url($this->redirectUrl));
         }
 
         return $next($request);
     }
+
 }
